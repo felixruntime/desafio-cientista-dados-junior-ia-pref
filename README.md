@@ -11,6 +11,8 @@ Como Cientista de Dados no time de IA, grande parte do seu trabalho será **test
 
 Este desafio avalia suas habilidades em análise exploratória, estatística aplicada à avaliação de modelos e geração de recomendações acionáveis para gestão pública.
 
+> Os dados deste desafio são totalmente sintéticos: os chamados, rótulos e predições foram gerados artificialmente para simular o comportamento estatístico de um sistema real de classificação — nenhum dado de cidadão foi utilizado.
+
 ---
 
 ## Instruções
