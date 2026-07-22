@@ -15,6 +15,52 @@ Este desafio avalia suas habilidades em análise exploratória, estatística apl
 
 ---
 
+## Abordagem
+
+A análise foi organizada em três notebooks alinhados ao enunciado:
+
+1. **EDA** (`01_analise_exploratoria.ipynb`) — padrões do corpus relevantes para classificação (desbalanceamento, texto bimodal, canal).
+2. **Auditoria do modelo A** (`02_auditoria_modelo_a.ipynb`) — métricas com IC via bootstrap estratificado, modos de falha e calibração da confiança.
+3. **Comparação A vs B** (`03_comparacao_e_recomendacao.ipynb`) — teste de McNemar (desenho pareado), trade-offs por categoria e recomendação para gestão.
+
+Figuras por etapa em `results/figures/{eda,auditoria,comparacao}/`.
+
+---
+
+## Como reproduzir
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Execute os notebooks **nesta ordem** (kernel `.venv`), a partir da pasta `notebooks/` ou ajustando o `ROOT` do Setup:
+
+1. `notebooks/01_analise_exploratoria.ipynb`
+2. `notebooks/02_auditoria_modelo_a.ipynb`
+3. `notebooks/03_comparacao_e_recomendacao.ipynb`
+
+Dados: `dados/chamados_com_predicoes.csv`.
+
+---
+
+## Sumário executivo
+
+**Principais achados**
+
+- O corpus tem **8 categorias desbalanceadas** e textos **bimodais** (curtos ≤60 vs longos ≥150); o canal muda volume, não o mix de classes.
+- O **modelo A** acerta ~**77%** dos chamados, mas falha de forma concentrada: confusão **esgoto → buraco** (~221 casos) e acurácia ~**59%** em textos curtos. A confiança declarada do A **não** discrimina acerto/erro.
+- O **modelo B** chega a ~**87%** de acurácia (macro-F1 ~**0,85**). No teste **pareado de McNemar**, a vantagem do B é estatisticamente significativa (p ≪ 0,001). O B reduz drasticamente a confusão esgoto→buraco (**221 → 13**) e eleva a acurácia em textos curtos (~**85%**). Em **7 de 8** categorias o B melhora; a exceção é **poda de árvore** (acurácia cai de ~**78%** para ~**53%**). Diferente do A, a confiança do B é útil para triagem (erros concentram-se em baixa confiança).
+
+**Recomendação**
+
+Recomendamos **substituir o modelo A pelo modelo B** na Central 1746. Na amostra de 5.000 chamados, o B acerta cerca de **87%** dos casos frente a **77%** do A (diferença estatisticamente significativa no teste pareado). O B também corrige falhas graves do A — por exemplo, confunde bem menos esgoto com buraco e melhora muito o desempenho em textos curtos. **Risco:** na categoria de poda de árvore o B piora (acurácia cai de ~78% para ~53%). **Mitigação:** ao colocar o B em produção, monitorar semanalmente a poda de árvore e, se necessário, manter revisão humana ou regra híbrida só para essa categoria até o modelo ser ajustado. **Próximo passo:** rollout com painel das oito categorias e alerta se a poda cair abaixo do nível atual do A.
+
+> Limitações: dados sintéticos — validar em produção antes do deploy definitivo.
+
+---
+
 ## Instruções
 
 1. Crie um **fork público desse repositório** com suas respostas
@@ -117,6 +163,12 @@ desafio-ds-junior/
 │   └── chamados_com_predicoes.csv
 ├── results/
 │   └── figures/
+│       ├── eda/
+│       ├── auditoria/
+│       └── comparacao/
+├── docs/
+│   ├── SPECS.md
+│   └── specs/
 └── requirements.txt
 ```
 
