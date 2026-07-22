@@ -21,6 +21,7 @@ Comparar **modelo A** (produção) e **modelo B** (candidato) com teste estatís
 - [ ] **Parágrafo de recomendação para gestor** (riscos + mitigação)
 - [ ] Mesmo parágrafo no **sumário executivo** do `README.md`
 - [ ] Atualização do README: abordagem, como reproduzir, sumário executivo (≤ 1 página)
+- [ ] Figuras salvas em `results/figures/comparacao/` (quando aplicável)
 
 ---
 
@@ -34,6 +35,7 @@ Comparar **modelo A** (produção) e **modelo B** (candidato) com teste estatís
 | Métrica por categoria | Acurácia (recall por classe) + diferença B−A | Trade-offs visíveis por serviço |
 | IC por categoria | Bootstrap da diferença de acurácia | Incerteza na vantagem por classe |
 | Recomendação | Global + por categoria | Enunciado exige verificar se conclusão global se sustenta |
+| Output figuras | `results/figures/comparacao/` (`FIG_DIR` no notebook) | Separar outputs por etapa do desafio |
 
 ---
 
@@ -93,6 +95,8 @@ Estrutura sugerida do parágrafo para gestor:
 | Tabela — outcomes pareados | Input do McNemar |
 | Barplot — diferença B−A por categoria | Trade-offs |
 | (Opcional) Heatmap A vs B por categoria | Visão consolidada |
+
+Exportar figuras com `fig.savefig(FIG_DIR / ...)` em `results/figures/comparacao/`.
 
 ---
 

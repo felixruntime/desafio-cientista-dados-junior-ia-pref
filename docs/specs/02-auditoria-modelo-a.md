@@ -29,6 +29,7 @@ Auditar o **modelo A** (em produção): quantificar desempenho global e por cate
 - [ ] Análise por subgrupos (canal, quartil de texto, etc.)
 - [ ] Hipóteses sobre causas dos erros
 - [ ] Discussão do **impacto prático** de cada modo de falha
+- [ ] Figuras salvas em `results/figures/auditoria/` (quando aplicável)
 
 ---
 
@@ -42,6 +43,7 @@ Auditar o **modelo A** (em produção): quantificar desempenho global e por cate
 | Matriz de confusão | Normalizada por linha (recall) | Mostra para onde vão os erros de cada classe |
 | Subgrupos | Canal, quartil de comprimento do texto | Hipóteses levantadas na EDA |
 | Calibração | Confiança vs acurácia (`conf_modelo_a`) | Modelo A declara confiança — avaliar utilidade |
+| Output figuras | `results/figures/auditoria/` (`FIG_DIR` no notebook) | Separar outputs por etapa do desafio |
 
 ---
 
@@ -95,6 +97,8 @@ Auditar o **modelo A** (em produção): quantificar desempenho global e por cate
 | Barplot — top confusões | Q3 |
 | Barplot — acurácia por subgrupo | Q3 |
 | (Opcional) Confiança vs acurácia | Calibração |
+
+Exportar figuras com `fig.savefig(FIG_DIR / ...)` em `results/figures/auditoria/`.
 
 ---
 

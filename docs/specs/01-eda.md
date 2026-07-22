@@ -18,7 +18,7 @@ Explorar o corpus de chamados e identificar padrões relevantes para o problema 
 - [ ] Visualizações e tabelas focadas no problema de classificação
 - [ ] **Síntese de 3–5 achados** com interpretação em texto
 - [ ] Para cada achado: **por que importa** para avaliar os classificadores
-- [ ] Figuras salvas em `results/figures/` (quando aplicável)
+- [ ] Figuras salvas em `results/figures/eda/` (quando aplicável)
 
 ---
 
@@ -30,6 +30,7 @@ Explorar o corpus de chamados e identificar padrões relevantes para o problema 
 | Foco | Variáveis ligadas ao texto e à classificação | Enunciado pede foco no problema de classificação |
 | Métricas descritivas | Contagens, proporções, mediana de caracteres | Base para subgrupos na Parte 2 |
 | Visualizações | matplotlib / seaborn | Reprodutibilidade e simplicidade |
+| Output figuras | `results/figures/eda/` | Separar outputs por etapa do desafio |
 
 ---
 
