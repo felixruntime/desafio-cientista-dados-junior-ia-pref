@@ -10,6 +10,7 @@ Plano de trabalho e critérios de entrega por parte. As specs complementam o [RE
 | 2 | Q2 — Desempenho com incerteza | [02-auditoria-modelo-a.md](specs/02-auditoria-modelo-a.md) | `notebooks/02_auditoria_modelo_a.ipynb` |
 | 2 | Q3 — Onde o modelo falha? | [02-auditoria-modelo-a.md](specs/02-auditoria-modelo-a.md) | `notebooks/02_auditoria_modelo_a.ipynb` |
 | 3 | Q4 — Devemos trocar de modelo? | [03-comparacao-recomendacao.md](specs/03-comparacao-recomendacao.md) | `notebooks/03_comparacao_e_recomendacao.ipynb` |
+| Bônus | Classificação com LLM + router | [04-bonus-llm-router.md](specs/04-bonus-llm-router.md) | `notebooks/04_bonus_llm_router.ipynb` |
 
 ## Workflow Git
 
