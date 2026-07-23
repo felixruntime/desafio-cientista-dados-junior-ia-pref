@@ -22,8 +22,9 @@ A análise foi organizada em três notebooks alinhados ao enunciado:
 1. **EDA** (`01_analise_exploratoria.ipynb`) — padrões do corpus relevantes para classificação (desbalanceamento, texto bimodal, canal).
 2. **Auditoria do modelo A** (`02_auditoria_modelo_a.ipynb`) — métricas com IC via bootstrap estratificado, modos de falha e calibração da confiança.
 3. **Comparação A vs B** (`03_comparacao_e_recomendacao.ipynb`) — teste de McNemar (desenho pareado), trade-offs por categoria e recomendação para gestão.
+4. **Bônus — LLM + router** (`04_bonus_llm_router.ipynb`) — top-200 casos difíceis via API Rio Open; caminho AUTO mantém B (~96%).
 
-Figuras por etapa em `results/figures/{eda,auditoria,comparacao}/`.
+Figuras por etapa em `results/figures/{eda,auditoria,comparacao,bonus}/`.
 
 ---
 
@@ -40,6 +41,7 @@ Execute os notebooks **nesta ordem** (kernel `.venv`), a partir da pasta `notebo
 1. `notebooks/01_analise_exploratoria.ipynb`
 2. `notebooks/02_auditoria_modelo_a.ipynb`
 3. `notebooks/03_comparacao_e_recomendacao.ipynb`
+4. `notebooks/04_bonus_llm_router.ipynb` — roda **sem API** se `results/cache/llm_predictions.csv` existir; para novas predições LLM, copie `.env.example` → `.env` e defina `RIO_API_KEY`.
 
 Dados: `dados/chamados_com_predicoes.csv`.
 
@@ -129,9 +131,13 @@ Compare o desempenho dos dois modelos e recomende: devemos substituir o modelo A
 
 > Desenvolva o bônus se sobrar tempo. Ele não compensa questões obrigatórias incompletas.
 
-Use um LLM de sua escolha para classificar uma amostra dos chamados e compare com os modelos A e B.
+Notebook: **`04_bonus_llm_router.ipynb`**. Router **uncertainty-aware** escala **200 chamados** (top `u` entre candidatos `D∨L`) para a **API Rio Open** (`rio-3.0-open-mini`); ~**96%** ficam em **AUTO** (`pred = B`).
 
-**Entregue**: Prompt utilizado, resultados, custo aproximado e limitações da comparação.
+**Prompt:** text-only (sem predições A/B — anti-anchoring) + JSON com `raciocinio_logico` antes de `categoria`. **Fallback:** API/JSON inválido → `pred_modelo_b`.
+
+**Resultados (cache atual):** Acc router ≈ Acc B (~**87%**); Acc@AUTO ~**90%**; no subset escalado B ≈ **0,5%** vs A ≈ **85%** — fallback B é conservador nesse subset. Custo ~**116k tokens** por execução completa (200 chamadas). Cache em `results/cache/llm_predictions.csv` permite reproduzir sem chave API.
+
+**Limitações:** dados sintéticos; amostra difícil de 200; sem API o cache usa fallback B (`no_api_key`).
 
 ---
 
@@ -158,14 +164,18 @@ desafio-ds-junior/
 ├── notebooks/
 │   ├── 01_analise_exploratoria.ipynb
 │   ├── 02_auditoria_modelo_a.ipynb
-│   └── 03_comparacao_e_recomendacao.ipynb
+│   ├── 03_comparacao_e_recomendacao.ipynb
+│   └── 04_bonus_llm_router.ipynb
 ├── dados/
 │   └── chamados_com_predicoes.csv
 ├── results/
+│   ├── cache/
+│   │   └── llm_predictions.csv
 │   └── figures/
 │       ├── eda/
 │       ├── auditoria/
-│       └── comparacao/
+│       ├── comparacao/
+│       └── bonus/
 ├── docs/
 │   ├── SPECS.md
 │   └── specs/
