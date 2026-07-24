@@ -65,7 +65,7 @@ Arquivo: **`dados/chamados_com_predicoes.csv`** (5.000 chamados, 11 colunas)
 - O corpus tem **8 categorias desbalanceadas** e textos **bimodais** (curtos ≤60 vs longos ≥150); o canal muda volume, não o mix de classes.
 - O **modelo A** acerta ~**77%** dos chamados, mas falha de forma concentrada: confusão **esgoto → buraco** (~221 casos) e acurácia ~**59%** em textos curtos. A confiança declarada do A **não** discrimina acerto/erro.
 - O **modelo B** chega a ~**87%** de acurácia (macro-F1 ~**0,85**). No teste **pareado de McNemar**, a vantagem do B é estatisticamente significativa (p ≪ 0,001). O B reduz drasticamente a confusão esgoto→buraco (**221 → 13**) e eleva a acurácia em textos curtos (~**85%**). Em **7 de 8** categorias o B melhora; a exceção é **poda de árvore** (acurácia cai de ~**78%** para ~**53%**). Diferente do A, a confiança do B é útil para triagem (erros concentram-se em baixa confiança).
-- **Bônus (opcional):** router que mantém B em ~**96%** dos chamados (AUTO) e escala os **200 casos mais difíceis** para [Rio Open](https://github.com/prefeitura-rio/rio-ai); sem API, o cache documenta fallback conservador para B (detalhes na seção Bônus).
+- **Bônus (opcional):** router que mantém B em ~**96%** dos chamados (AUTO) e escala os **200 casos mais difíceis** para [Rio Open](https://github.com/prefeitura-rio/rio-ai); no subset escalado A ≈ **75%** vs B ≈ **0,5%** — fallback B alinhado ao AUTO, mas **subótimo** nesse corte (detalhes na seção Bônus).
 
 **Recomendação**
 
@@ -109,7 +109,7 @@ O B tem confiança útil para triagem, mas ainda erra em subgrupos (ex.: **poda 
 
 - **AUTO (~4.800 chamados):** `pred_final = pred_modelo_b`
 - **LLM (200 chamados):** API Rio no **texto do cidadão apenas** (anti-anchoring — A/B não entram no prompt)
-- **Fallback:** falha de API, JSON inválido ou slug inválido → `pred_modelo_b`
+- **Fallback (MVP):** falha de API, JSON inválido ou slug inválido → `pred_modelo_b` (alinhado ao AUTO; **subótimo** no subset escalado — ver Implicação de design)
 
 ### Prompt e integração
 
@@ -135,22 +135,31 @@ Com o cache commitado, o notebook roda end-to-end sem API. Para predições LLM 
 | Coverage AUTO / LLM | 96% / 4% | 200 chamados escalados |
 | Acc@AUTO (B) | ~90% | B performa bem onde não escala |
 | Acc@LLM (A) | ~75% | No subset difícil (todos **D**), A ainda acerta mais |
-| Acc@LLM (router) | ~0,5% | Fallback B falha quase tudo nesse subset |
+| Acc@LLM (router) | ~0,5% | Fallback B no subset onde B já erra ~99,5% |
 | Taxa fallback B | 100% | Cache gerado com `no_api_key` |
+| Acc router (fallback A hipot.) | ~89,7% | Usar A nos 200 escalados recuperaria ~**+3 p.p.** globais |
 | Custo estimado (com API) | ~116k tokens | 200 chamadas × (~500 in + ~80 out) |
 
 Figuras: `results/figures/bonus/01_acc_router_vs_b.png`, `02_subset_escalado_breakdown.png`.
 
+### Implicação de design
+
+O score `u` prioriza `(1 − conf_B)` e divergência **D** — o top-200 concentra casos em que o **B já erra** (~99,5% no subset escalado). Por isso Acc@LLM(B) ≈ 0,5% reflete **seleção**, não só falha da API.
+
+- **Fallback B:** coerente operacionalmente com AUTO e a recomendação global de adotar B, mas **pior escolha de acurácia** no caminho LLM quando o Rio Open está indisponível.
+- **Refinamento baseado em evidência:** fallback **A** quando `D`, fila humana, ou LLM real — não implementado no MVP.
+- Isso **não invalida** adotar B globalmente (87% vs 77%); expõe um gap de política no caminho escalado.
+
 ### Limitações
 
 - Dados **sintéticos** — métricas absolutas não generalizam para produção.
-- Top-200 são **só casos D** (divergência); casos L-only têm `u` menor e não entram no corte.
+- Top-200 são **só casos D** (divergência); casos L-only têm `u` menor e não entram no corte — o router captura **parcialmente** baixa confiança do B.
 - Sem API Rio, o bônus demonstra **arquitetura e política de fallback**, não ganho real do LLM.
-- Fallback para B é **conservador** no subset escalado; refinamento futuro (ex.: poda → A) está documentado como opcional, não implementado no MVP.
+- Fallback para B no MVP é **subótimo** no subset escalado; refinamento documentado como trabalho futuro.
 
 ### Conexão com a recomendação principal
 
-O router **não substitui** a troca A→B. Ele complementa: B no fluxo principal, LLM só onde A≠B ou incerteza alta — com fallback previsível alinhado ao AUTO.
+O router **não substitui** a troca A→B. Ele complementa: B no fluxo principal (~96%), LLM (ou fallback refinado) nos ~4% escalados por incerteza.
 
 ---
 
