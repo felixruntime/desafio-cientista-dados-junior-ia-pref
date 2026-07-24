@@ -5,26 +5,22 @@
 
 ## Contexto
 
-A **Central 1746** recebe milhares de chamados de cidadãos todos os dias. Para agilizar o encaminhamento, o time de IA da Casa Civil desenvolveu um classificador automático que lê o texto do chamado e prevê a categoria do serviço (o **modelo A**, hoje em produção). Recentemente, uma nova versão foi desenvolvida (o **modelo B**) e precisamos decidir se vale a pena substituir o modelo atual.
+Este repositório contém a solução do desafio técnico de **Cientista de Dados Júnior** (Casa Civil / IplanRio): avaliar o classificador da **Central 1746** (modelo A em produção vs. modelo B candidato) sobre 5.000 chamados sintéticos e recomendar substituição com base em evidências.
 
-Como Cientista de Dados no time de IA, grande parte do seu trabalho será **testar e avaliar sistemas de IA em contextos reais de aplicação** — e é exatamente isso que este desafio simula: auditar o modelo em produção e recomendar, com base em evidências, se devemos ou não trocá-lo pelo modelo B.
-
-Este desafio avalia suas habilidades em análise exploratória, estatística aplicada à avaliação de modelos e geração de recomendações acionáveis para gestão pública.
-
-> Os dados deste desafio são totalmente sintéticos: os chamados, rótulos e predições foram gerados artificialmente para simular o comportamento estatístico de um sistema real de classificação — nenhum dado de cidadão foi utilizado.
+> Os dados são totalmente sintéticos — nenhum dado real de cidadão foi utilizado.
 
 ---
 
 ## Abordagem
 
-A análise foi organizada em três notebooks alinhados ao enunciado:
+A análise foi organizada em **quatro notebooks**:
 
 1. **EDA** (`01_analise_exploratoria.ipynb`) — padrões do corpus relevantes para classificação (desbalanceamento, texto bimodal, canal).
 2. **Auditoria do modelo A** (`02_auditoria_modelo_a.ipynb`) — métricas com IC via bootstrap estratificado, modos de falha e calibração da confiança.
 3. **Comparação A vs B** (`03_comparacao_e_recomendacao.ipynb`) — teste de McNemar (desenho pareado), trade-offs por categoria e recomendação para gestão.
-4. **Bônus — LLM + router** (`04_bonus_llm_router.ipynb`) — top-200 casos difíceis via API Rio Open; caminho AUTO mantém B (~96%).
+4. **Bônus — LLM + router** (`04_bonus_llm_router.ipynb`) — router uncertainty-aware + Rio Open nos casos difíceis.
 
-Figuras por etapa em `results/figures/{eda,auditoria,comparacao,bonus}/`.
+Figuras por etapa em `results/figures/{eda,auditoria,comparacao,bonus}/`. Specs em `docs/specs/`.
 
 ---
 
@@ -54,6 +50,7 @@ Dados: `dados/chamados_com_predicoes.csv`.
 - O corpus tem **8 categorias desbalanceadas** e textos **bimodais** (curtos ≤60 vs longos ≥150); o canal muda volume, não o mix de classes.
 - O **modelo A** acerta ~**77%** dos chamados, mas falha de forma concentrada: confusão **esgoto → buraco** (~221 casos) e acurácia ~**59%** em textos curtos. A confiança declarada do A **não** discrimina acerto/erro.
 - O **modelo B** chega a ~**87%** de acurácia (macro-F1 ~**0,85**). No teste **pareado de McNemar**, a vantagem do B é estatisticamente significativa (p ≪ 0,001). O B reduz drasticamente a confusão esgoto→buraco (**221 → 13**) e eleva a acurácia em textos curtos (~**85%**). Em **7 de 8** categorias o B melhora; a exceção é **poda de árvore** (acurácia cai de ~**78%** para ~**53%**). Diferente do A, a confiança do B é útil para triagem (erros concentram-se em baixa confiança).
+- **Bônus (opcional):** router uncertainty-aware que mantém B em ~**96%** dos chamados (AUTO) e escala os **200 casos mais difíceis** para Rio Open; sem API, o cache documenta fallback conservador para B.
 
 **Recomendação**
 
@@ -63,104 +60,90 @@ Recomendamos **substituir o modelo A pelo modelo B** na Central 1746. Na amostra
 
 ---
 
-## Instruções
+## Resultados por etapa
 
-1. Crie um **fork público desse repositório** com suas respostas
-2. Use **Jupyter Notebooks** (.ipynb) bem documentados — os notebooks devem rodar do início ao fim sem erros
-3. Inclua **README.md** explicando abordagem, como reproduzir e um **sumário executivo de no máximo 1 página** com seus principais achados e a recomendação final
-4. Faça commits ao longo do trabalho — o histórico deve refletir a evolução da análise (não faça um único commit no final)
+| Etapa | Notebook | Principais entregas |
+|---|---|---|
+| EDA | `01_analise_exploratoria.ipynb` | Desbalanceamento, texto bimodal, canal vs mix de classes |
+| Auditoria A | `02_auditoria_modelo_a.ipynb` | Métricas com IC (bootstrap), modos de falha, calibração |
+| Comparação | `03_comparacao_e_recomendacao.ipynb` | McNemar pareado, trade-offs por categoria, recomendação |
+| Bônus | `04_bonus_llm_router.ipynb` | Router uncertainty-aware + Rio Open (ver seção abaixo) |
 
 ---
 
-## Dados
+## Bônus — LLM + Uncertainty-Aware Router
 
-Arquivo: **`dados/chamados_com_predicoes.csv`** (5.000 chamados rotulados)
+**Notebook:** `notebooks/04_bonus_llm_router.ipynb`  
+**Spec:** `docs/specs/04-bonus-llm-router.md`
 
-| Coluna | Descrição |
+### Motivação
+
+A Parte 3 recomenda **adotar o Modelo B**. O bônus não questiona essa conclusão: propõe um **desenho de implantação** — quando escalar um chamado difícil para um LLM, em vez de confiar apenas no B automático.
+
+O B tem confiança útil para triagem, mas ainda erra em subgrupos (ex.: **poda de árvore**) e em casos em que **A e B discordam** (~1.702 chamados no pool `D∨L`). O router seleciona os **200 mais incertos** (top score `u`) para classificação via **Rio Open** (`rio-3.0-open-mini`); os demais **~96%** seguem em **AUTO** com `pred = B`.
+
+### Como funciona o router
+
+| Sinal | Definição |
 |---|---|
-| `id_chamado` | Identificador único |
-| `data_abertura` | Data de abertura do chamado |
-| `bairro` | Bairro informado |
-| `canal` | Canal de entrada (app, telefone ou portal) |
-| `texto` | Texto do chamado escrito pelo cidadão |
-| `categoria_real` | Categoria correta, atribuída por atendente humano |
-| `pred_modelo_a` | Categoria prevista pelo modelo A (produção) |
-| `conf_modelo_a` | Confiança declarada pelo modelo A (0 a 1) |
-| `pred_modelo_b` | Categoria prevista pelo modelo B (candidato) |
-| `conf_modelo_b` | Confiança declarada pelo modelo B (0 a 1) |
+| **D** | `pred_modelo_a ≠ pred_modelo_b` (divergência) |
+| **L** | concordam e `conf_modelo_b < 0.60` (baixa confiança) |
+| **u** | `(1 − conf_B) + 0.3·D + 0.2·high_risk + 0.15·poda` |
+| **Escalonamento** | top-200 entre candidatos `D∨L`, ordenados por `u` |
+
+- **AUTO (~4.800 chamados):** `pred_final = pred_modelo_b`
+- **LLM (200 chamados):** API Rio no **texto do cidadão apenas** (anti-anchoring — A/B não entram no prompt)
+- **Fallback:** falha de API, JSON inválido ou slug inválido → `pred_modelo_b`
+
+### Prompt e integração
+
+- System prompt com as 8 categorias e regras (esgoto ≠ buraco, poda vs fiação, etc.)
+- Saída JSON: `raciocinio_logico` **antes** de `categoria` e `confianca` (chain-of-thought)
+- Cliente síncrono (`httpx`), 1 retry, `temperature=0`
+- Cache em `results/cache/llm_predictions.csv` para reproduzir **sem** `RIO_API_KEY`
+
+### Reprodução do bônus
+
+```bash
+cp .env.example .env   # opcional: RIO_API_KEY para novas predições LLM
+jupyter notebook notebooks/04_bonus_llm_router.ipynb
+```
+
+Com o cache commitado, o notebook roda end-to-end sem API. Para predições LLM reais, configure `.env` e **apague ou renomeie** o cache antes de reexecutar.
+
+### Resultados (cache atual — sem API Rio)
+
+| Métrica | Valor | Interpretação |
+|---|---|---|
+| Acc Modelo A / B / Router | ~77% / ~87% / ~87% | Router ≡ B enquanto LLM está em fallback |
+| Coverage AUTO / LLM | 96% / 4% | 200 chamados escalados |
+| Acc@AUTO (B) | ~90% | B performa bem onde não escala |
+| Acc@LLM (A) | ~75% | No subset difícil (todos **D**), A ainda acerta mais |
+| Acc@LLM (router) | ~0,5% | Fallback B falha quase tudo nesse subset |
+| Taxa fallback B | 100% | Cache gerado com `no_api_key` |
+| Custo estimado (com API) | ~116k tokens | 200 chamadas × (~500 in + ~80 out) |
+
+Figuras: `results/figures/bonus/01_acc_router_vs_b.png`, `02_subset_escalado_breakdown.png`.
+
+### Limitações
+
+- Dados **sintéticos** — métricas absolutas não generalizam para produção.
+- Top-200 são **só casos D** (divergência); casos L-only têm `u` menor e não entram no corte.
+- Sem API, o bônus demonstra **arquitetura e política de fallback**, não ganho real do LLM.
+- Fallback para B é **conservador** no subset escalado; refinamento futuro (ex.: poda → A) está documentado como opcional, não implementado no MVP.
+
+### Conexão com a recomendação principal
+
+O router **não substitui** a troca A→B. Ele complementa: B no fluxo principal, LLM só onde A≠B ou incerteza alta — com fallback previsível alinhado ao AUTO.
 
 ---
 
-## Parte 1: Análise Exploratória
-
-### 1. Panorama dos Chamados
-
-Explore o corpus e apresente o que um gestor precisaria saber sobre esses chamados: distribuição de categorias, características dos textos, padrões por canal, bairro ou tempo. Monte uma análise limpa, focando em tabelas e visualizações que **importam para o problema de classificação**.
-
-**Entregue**: Análise exploratória com visualizações e uma síntese dos 3-5 achados mais relevantes, explicitando por que cada um importa para avaliar os classificadores.
-
----
-
-## Parte 2: Auditoria do Modelo em Produção
-
-### 2. Desempenho com Incerteza
-
-Avalie o desempenho global e por categoria do modelo A. Reporte as métricas que julgar adequadas, **com intervalos de confiança**, justificando a escolha das métricas considerando o desbalanceamento das classes.
-
-**Entregue**: Tabela de métricas com incerteza quantificada, método de cálculo dos intervalos explicitado e justificativa das escolhas.
-
-### 3. Onde o Modelo Falha?
-
-O desempenho é homogêneo? Investigue se existem **subgrupos de chamados em que o modelo falha mais** (por categoria, características do texto, canal etc.). Analise também a matriz de confusão: os erros têm padrão?
-
-**Entregue**: Identificação e quantificação dos principais modos de falha, hipóteses sobre suas causas e discussão do **impacto prático** de cada um para o encaminhamento dos chamados.
-
----
-
-## Parte 3: Modelo A vs. Modelo B
-
-### 4. Devemos Trocar de Modelo?
-
-Compare o desempenho dos dois modelos e recomende: devemos substituir o modelo A pelo B? Atenção a dois pontos: (a) as predições são sobre os **mesmos chamados** — escolha um teste estatístico adequado a esse desenho; (b) verifique se a conclusão da métrica global se sustenta quando você olha **por categoria**.
-
-**Entregue**: Teste de hipótese com justificativa da escolha e interpretação correta do p-valor; comparação por categoria com discussão dos trade-offs encontrados; e um **parágrafo final de recomendação escrito para um gestor não técnico**, com os riscos da troca (se houver) explícitos e, se aplicável, medidas de mitigação. Este parágrafo deve constar também no sumário executivo do README.
-
----
-
-## Bônus (opcional) - Classificação com LLM
-
-> Desenvolva o bônus se sobrar tempo. Ele não compensa questões obrigatórias incompletas.
-
-Notebook: **`04_bonus_llm_router.ipynb`**. Router **uncertainty-aware** escala **200 chamados** (top `u` entre candidatos `D∨L`) para a **API Rio Open** (`rio-3.0-open-mini`); ~**96%** ficam em **AUTO** (`pred = B`).
-
-**Prompt:** text-only (sem predições A/B — anti-anchoring) + JSON com `raciocinio_logico` antes de `categoria`. **Fallback:** API/JSON inválido → `pred_modelo_b`.
-
-**Resultados (cache atual):** Acc router ≈ Acc B (~**87%**); Acc@AUTO ~**90%**; no subset escalado B ≈ **0,5%** vs A ≈ **85%** — fallback B é conservador nesse subset. Custo ~**116k tokens** por execução completa (200 chamadas). Cache em `results/cache/llm_predictions.csv` permite reproduzir sem chave API.
-
-**Limitações:** dados sintéticos; amostra difícil de 200; sem API o cache usa fallback B (`no_api_key`).
-
----
-
-## Avaliação
-
-Você será avaliado em cada uma das categorias abaixo, com seus respectivos pesos:
-
-- **Rigor estatístico** (métricas adequadas, incerteza, testes corretos, cuidado com conclusões): peso 2
-- **Investigação e análise exploratória** (padrões não óbvios, hipóteses, conexão entre EDA e erros dos modelos): peso 1
-- **Comunicação** (sumário executivo, visualizações, tradução de resultados em recomendação): peso 1
-- **Boas práticas** (reprodutibilidade, organização do repositório, commits, documentação): peso 1
-
-Uma média ponderada será calculada e os melhores candidatos serão chamados para a etapa de entrevistas.
-
-**Dica**: não existe uma única resposta certa. Preferimos uma análise honesta sobre limitações a uma análise que finge certeza — e profundidade importa mais que completude.
-
----
-
-## Estrutura Sugerida do Repositório
+## Estrutura do repositório
 
 ```
-desafio-ds-junior/
+desafio-cientista-dados-junior-ia-pref/
 ├── README.md
+├── .env.example
 ├── notebooks/
 │   ├── 01_analise_exploratoria.ipynb
 │   ├── 02_auditoria_modelo_a.ipynb
@@ -181,23 +164,3 @@ desafio-ds-junior/
 │   └── specs/
 └── requirements.txt
 ```
-
----
-
-## FAQ
-
-**1. Posso usar bibliotecas específicas?**
-Sim! Sugestões: pandas, numpy, scipy, statsmodels, scikit-learn, matplotlib, seaborn, plotly.
-
-**2. Posso usar assistentes de IA (ChatGPT, Claude, Copilot)?**
-Sim, mas você deve ser capaz de explicar e defender cada decisão na entrevista técnica. Conclusões sem código que as produza, ou código que você não entende, contam contra.
-
-**3. Preciso fazer todas as questões?**
-As questões 1 a 4 sim, mas profundidade importa mais que completude. O bônus é opcional de verdade.
-
-**4. Preciso treinar um modelo?**
-Não. O desafio é de **avaliação** de modelos, não de treinamento — resista à tentação.
-
----
-
-Boa sorte! 🚀
