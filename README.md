@@ -1,5 +1,8 @@
-# Desafio Técnico - Cientista de Dados Junior
-## Time de IA - Casa Civil / IplanRio
+# Desafio Técnico — Cientista de Dados Júnior
+## Time de IA — Casa Civil / IplanRio
+
+**Autor:** [felixruntime](https://github.com/felixruntime)  
+**Fork:** [github.com/felixruntime/desafio-cientista-dados-junior-ia-pref](https://github.com/felixruntime/desafio-cientista-dados-junior-ia-pref)
 
 ---
 
@@ -20,7 +23,7 @@ A análise foi organizada em **quatro notebooks**:
 3. **Comparação A vs B** (`03_comparacao_e_recomendacao.ipynb`) — teste de McNemar (desenho pareado), trade-offs por categoria e recomendação para gestão.
 4. **Bônus — LLM + router** (`04_bonus_llm_router.ipynb`) — router uncertainty-aware + Rio Open nos casos difíceis.
 
-Figuras por etapa em `results/figures/{eda,auditoria,comparacao,bonus}/`. Specs em `docs/specs/`.
+Figuras por etapa em `results/figures/{eda,auditoria,comparacao,bonus}/` (geradas ao executar os notebooks). Specs detalhadas em `docs/specs/`.
 
 ---
 
@@ -28,7 +31,7 @@ Figuras por etapa em `results/figures/{eda,auditoria,comparacao,bonus}/`. Specs 
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
@@ -39,7 +42,19 @@ Execute os notebooks **nesta ordem** (kernel `.venv`), a partir da pasta `notebo
 3. `notebooks/03_comparacao_e_recomendacao.ipynb`
 4. `notebooks/04_bonus_llm_router.ipynb` — roda **sem API** se `results/cache/llm_predictions.csv` existir; para novas predições LLM, copie `.env.example` → `.env` e defina `RIO_API_KEY`.
 
-Dados: `dados/chamados_com_predicoes.csv`.
+---
+
+## Dados
+
+Arquivo: **`dados/chamados_com_predicoes.csv`** (5.000 chamados, 11 colunas)
+
+| Coluna | Descrição |
+|---|---|
+| `texto` | Texto do chamado |
+| `categoria_real` | Rótulo humano (ground truth) |
+| `pred_modelo_a` / `conf_modelo_a` | Predição e confiança do modelo A (produção) |
+| `pred_modelo_b` / `conf_modelo_b` | Predição e confiança do modelo B (candidato) |
+| `canal`, `bairro`, `data_abertura`, `id_chamado` | Metadados do chamado |
 
 ---
 
@@ -50,7 +65,7 @@ Dados: `dados/chamados_com_predicoes.csv`.
 - O corpus tem **8 categorias desbalanceadas** e textos **bimodais** (curtos ≤60 vs longos ≥150); o canal muda volume, não o mix de classes.
 - O **modelo A** acerta ~**77%** dos chamados, mas falha de forma concentrada: confusão **esgoto → buraco** (~221 casos) e acurácia ~**59%** em textos curtos. A confiança declarada do A **não** discrimina acerto/erro.
 - O **modelo B** chega a ~**87%** de acurácia (macro-F1 ~**0,85**). No teste **pareado de McNemar**, a vantagem do B é estatisticamente significativa (p ≪ 0,001). O B reduz drasticamente a confusão esgoto→buraco (**221 → 13**) e eleva a acurácia em textos curtos (~**85%**). Em **7 de 8** categorias o B melhora; a exceção é **poda de árvore** (acurácia cai de ~**78%** para ~**53%**). Diferente do A, a confiança do B é útil para triagem (erros concentram-se em baixa confiança).
-- **Bônus (opcional):** router uncertainty-aware que mantém B em ~**96%** dos chamados (AUTO) e escala os **200 casos mais difíceis** para Rio Open; sem API, o cache documenta fallback conservador para B.
+- **Bônus (opcional):** router que mantém B em ~**96%** dos chamados (AUTO) e escala os **200 casos mais difíceis** para [Rio Open](https://github.com/prefeitura-rio/rio-ai); sem API, o cache documenta fallback conservador para B (detalhes na seção Bônus).
 
 **Recomendação**
 
@@ -74,7 +89,8 @@ Recomendamos **substituir o modelo A pelo modelo B** na Central 1746. Na amostra
 ## Bônus — LLM + Uncertainty-Aware Router
 
 **Notebook:** `notebooks/04_bonus_llm_router.ipynb`  
-**Spec:** `docs/specs/04-bonus-llm-router.md`
+**Spec:** `docs/specs/04-bonus-llm-router.md`  
+**Referência Rio Open:** [prefeitura-rio/rio-ai](https://github.com/prefeitura-rio/rio-ai)
 
 ### Motivação
 
@@ -129,7 +145,7 @@ Figuras: `results/figures/bonus/01_acc_router_vs_b.png`, `02_subset_escalado_bre
 
 - Dados **sintéticos** — métricas absolutas não generalizam para produção.
 - Top-200 são **só casos D** (divergência); casos L-only têm `u` menor e não entram no corte.
-- Sem API, o bônus demonstra **arquitetura e política de fallback**, não ganho real do LLM.
+- Sem API Rio, o bônus demonstra **arquitetura e política de fallback**, não ganho real do LLM.
 - Fallback para B é **conservador** no subset escalado; refinamento futuro (ex.: poda → A) está documentado como opcional, não implementado no MVP.
 
 ### Conexão com a recomendação principal
